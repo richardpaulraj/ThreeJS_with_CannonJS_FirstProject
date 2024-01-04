@@ -15,7 +15,7 @@ const debugObjects = {}
 debugObjects.createSphere = ()=>{
 
     createSphere(
-        Math.random() * 0.5,
+        Math.random() / 2,
         {
          x: (Math.random() - 0.5) * 3 ,
          y: 3,
@@ -24,7 +24,7 @@ debugObjects.createSphere = ()=>{
     )
 }
 
-debugObjects.addBox = ()=>{
+debugObjects.createBox = ()=>{
     createBox(
         Math.random(),
         Math.random(),
@@ -37,8 +37,19 @@ debugObjects.addBox = ()=>{
     )
 }
 
-gui.add(debugObjects, 'addBox')
+// debugObjects.reset = ()=>{
+//   for(object of objectsToUpdate){
+//     // object.body.removeEventListner('collide',)
+//     world.removeBody(object.body)
+//     scene.remove(object.mesh)
+//   }
+//   objectsToUpdate.splice(0, objectsToUpdate.length)
+
+// }
+
+gui.add(debugObjects, 'createBox')
 gui.add(debugObjects, 'createSphere')
+// gui.add(debugObjects, 'reset')
 
 /**
  * Base
@@ -48,6 +59,19 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
+//Sounds
+const hitSound = new Audio('/sounds/hit.mp3')
+// const playHitSound = (collision)=>{
+//     const impactStrength = collision.contact.getImpactVelocityAlongNormal()
+//     // console.log(impactStrength)
+    
+//     if(impactStrength > 1.5){
+//       hitSound.volume = Math.random()
+//       hitSound.currentTime = 0
+//       hitSound.play()
+//     }
+// }
 
 //Physics
 
@@ -72,9 +96,10 @@ world.defaultContactMaterial = defaultContactMaterial // One liner to add the ma
 
 //Floor
 
-const floorShape = new CANNON.Box(new CANNON.Vec3(10/2,10/2, 0.3 / 2)) //I am make this because the objects should fall after it reches the end I am diivng by 2 because here it starts from the center
+const floorShape = new CANNON.Box(new CANNON.Vec3(10/2,10/2, 0.4 / 2)) //I am make this because the objects should fall after it reches the end I am diivng by 2 because here it starts from the center
 const floorBody = new CANNON.Body({
-    mass: 0, // Means this is Static it wont move
+    // mass: 0, // Means this is Static it wont move
+    type:CANNON.Body.STATIC,
     shape : floorShape,
 })
 floorBody.quaternion.setFromAxisAngle(
@@ -106,7 +131,7 @@ const environmentMapTexture = cubeTextureLoader.load([
  * Floor
  */
 const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 10, 0.3),
+    new THREE.BoxGeometry(10, 10, 0.4),
     new THREE.MeshStandardMaterial({
         color: '#777777',
         metalness: 0.3,
@@ -221,6 +246,17 @@ const createSphere = (radius, position)=>{
 
     world.addBody(body)
 
+    body.addEventListener('collide',  (collision)=>{
+        const impactStrength = collision.contact.getImpactVelocityAlongNormal()
+        
+        if(impactStrength > 1.25){
+          hitSound.volume = radius * 2
+          hitSound.currentTime = 0
+          hitSound.play()
+        }
+    })
+
+
     //Save the objects to update
     objectsToUpdate.push({
         mesh:mesh,
@@ -229,7 +265,7 @@ const createSphere = (radius, position)=>{
 
 }
 
-createSphere(0.5, {x:0, y: 3, z: 0})
+// createSphere(0.5, {x:0, y: 3, z: 0})
 
 
 //Creat Boxes
@@ -260,6 +296,18 @@ const createBox = (width, height, depth, position)=>{
    })
    body.position.copy(position)
    world.addBody(body)
+
+   const boxVolume  = width * height * depth 
+
+   body.addEventListener('collide', (collision)=>{
+    const impactStrength = collision.contact.getImpactVelocityAlongNormal()
+    
+    if(impactStrength > 1.5){
+      hitSound.volume = Math.min(1, Math.max(0.1, boxVolume * 2.5)) // here 0.1 is the min value if the boxVolume goes below it atleast to hear some sound
+      hitSound.currentTime = 0
+      hitSound.play()
+    }
+})
 
    //save in objects
    objectsToUpdate.push({mesh, body})
